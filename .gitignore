@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Playwright generated artifacts (bulky, auto-generated)
+test-results/**/*.webm
+test-results/**/html/
+test-results/**/.last-run.json
+
+# Playwright default report folder
+/playwright-report/
+/reports/
+*.zip
+
+# Telegram runtime config (contains bot token and chat id)
+telegram.config.json
+
+# Environment
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store

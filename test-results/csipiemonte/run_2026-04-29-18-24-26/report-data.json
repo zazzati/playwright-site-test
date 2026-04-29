@@ -1,0 +1,95 @@
+{
+  "site": "csipiemonte",
+  "runId": "run_2026-04-29-18-24-26",
+  "startTime": "2026-04-29T18:24:28.742Z",
+  "duration": 10335.42,
+  "stats": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0
+  },
+  "tests": [
+    {
+      "title": "navigazione fornitori > professionisti e verifica titolo",
+      "suiteName": "csipiemonte › csipiemonte/example.spec.ts › Monitoraggio CSI Piemonte",
+      "file": "/projects/test-automation/tests/csipiemonte/example.spec.ts",
+      "status": "passed",
+      "duration": 5428,
+      "error": null,
+      "steps": [
+        {
+          "title": "Navigate to \"/it\"",
+          "category": "pw:api",
+          "duration": 3098,
+          "error": null
+        },
+        {
+          "title": "Click locator('a[href*=\"/fornitori-gare\"]')",
+          "category": "pw:api",
+          "duration": 545,
+          "error": null
+        },
+        {
+          "title": "Expect \"toHaveURL\"",
+          "category": "expect",
+          "duration": 98,
+          "error": null
+        },
+        {
+          "title": "Click locator('a[href*=\"/fornitori-gare/professionisti\"]')",
+          "category": "pw:api",
+          "duration": 858,
+          "error": null
+        },
+        {
+          "title": "Expect \"toHaveURL\"",
+          "category": "expect",
+          "duration": 123,
+          "error": null
+        },
+        {
+          "title": "Expect \"toBeVisible\" getByText('Per i professionisti legali')",
+          "category": "expect",
+          "duration": 43,
+          "error": null
+        }
+      ],
+      "screenshot": "/projects/test-automation/test-results/csipiemonte/run_2026-04-29-18-24-26/artifacts/example-Monitoraggio-CSI-P-5c0b9-ssionisti-e-verifica-titolo-csipiemonte/test-finished-1.png"
+    },
+    {
+      "title": "cloud cybersecurity > nivola > verifica testo e link inesistenti",
+      "suiteName": "csipiemonte › csipiemonte/example.spec.ts › Monitoraggio CSI Piemonte",
+      "file": "/projects/test-automation/tests/csipiemonte/example.spec.ts",
+      "status": "failed",
+      "duration": 8539,
+      "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Novola il cloud del CSI')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Novola il cloud del CSI')\u001b[22m\n",
+      "steps": [
+        {
+          "title": "Navigate to \"/it/offerta/servizi-cloud-cybersecurity\"",
+          "category": "pw:api",
+          "duration": 1870,
+          "error": null
+        },
+        {
+          "title": "Click locator('a[href*=\"/it/soluzione/nivola-cloud-csi\"]')",
+          "category": "pw:api",
+          "duration": 986,
+          "error": null
+        },
+        {
+          "title": "Expect \"toBeVisible\" getByText('Novola il cloud del CSI')",
+          "category": "expect",
+          "duration": 5029,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Novola il cloud del CSI')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Novola il cloud del CSI')\u001b[22m\n"
+        },
+        {
+          "title": "Verifica testo \"Novola il cloud del CSI\" (stringa inesistente)",
+          "category": "test.step",
+          "duration": 6063,
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Novola il cloud del CSI')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Novola il cloud del CSI')\u001b[22m\n"
+        }
+      ],
+      "screenshot": "/projects/test-automation/test-results/csipiemonte/run_2026-04-29-18-24-26/artifacts/example-Monitoraggio-CSI-P-1301e-ca-testo-e-link-inesistenti-csipiemonte/test-failed-1.png"
+    }
+  ]
+}
