@@ -1,0 +1,18 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Playwright
+/test-results/
+/reports/
+/playwright-report/
+*.zip
+
+# Environment
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
