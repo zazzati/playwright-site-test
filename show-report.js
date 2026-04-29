@@ -16,7 +16,7 @@ const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
 
-const PORT = parseInt(process.env.REPORT_PORT || '9323', 10);
+const PORT = parseInt(process.env.REPORT_PORT || '80', 10);
 const RESULTS_DIR = path.resolve('test-results');
 const SITE_FILTER = process.env.PROJECT_NAME || null;
 
