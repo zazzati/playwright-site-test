@@ -1,0 +1,60 @@
+{
+  "site": "csipiemonte",
+  "runId": "run_2026-04-29-18-16-40",
+  "startTime": "2026-04-29T18:16:42.849Z",
+  "duration": 6259.134,
+  "stats": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "tests": [
+    {
+      "title": "navigazione fornitori > professionisti e verifica titolo",
+      "suiteName": "csipiemonte › csipiemonte/example.spec.ts › Monitoraggio CSI Piemonte",
+      "file": "/projects/test-automation/tests/csipiemonte/example.spec.ts",
+      "status": "passed",
+      "duration": 4492,
+      "error": null,
+      "steps": [
+        {
+          "title": "Navigate to \"/it\"",
+          "category": "pw:api",
+          "duration": 2496,
+          "error": null
+        },
+        {
+          "title": "Click locator('a[href*=\"/fornitori-gare\"]')",
+          "category": "pw:api",
+          "duration": 393,
+          "error": null
+        },
+        {
+          "title": "Expect \"toHaveURL\"",
+          "category": "expect",
+          "duration": 46,
+          "error": null
+        },
+        {
+          "title": "Click locator('a[href*=\"/fornitori-gare/professionisti\"]')",
+          "category": "pw:api",
+          "duration": 942,
+          "error": null
+        },
+        {
+          "title": "Expect \"toHaveURL\"",
+          "category": "expect",
+          "duration": 32,
+          "error": null
+        },
+        {
+          "title": "Expect \"toBeVisible\" getByText('Per i professionisti legali')",
+          "category": "expect",
+          "duration": 52,
+          "error": null
+        }
+      ],
+      "screenshot": "/projects/test-automation/test-results/csipiemonte/run_2026-04-29-18-16-40/artifacts/example-Monitoraggio-CSI-P-5c0b9-ssionisti-e-verifica-titolo-csipiemonte/test-finished-1.png"
+    }
+  ]
+}
