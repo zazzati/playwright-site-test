@@ -44,5 +44,10 @@ export default defineConfig({
       testDir: './tests/csipiemonte',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'regionepiemonte',
+      testDir: './tests/regionepiemonte',
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 });

@@ -1,0 +1,12 @@
+{
+  "from": "Your Name <youremail@example.com>",
+  "to": ["recipient@example.com"],
+  "dashboardUrl": "http://your-server-ip/",
+  "smtp": {
+    "host": "smtp-pulse.com",
+    "port": 587,
+    "secure": false,
+    "user": "youremail@example.com",
+    "pass": "sp_apikey_YOUR_SENDPULSE_API_KEY"
+  }
+}
