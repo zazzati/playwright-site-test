@@ -20,17 +20,23 @@
 
 'use strict';
 
-const http     = require('http');
+const http      = require('http');
+const https     = require('https');
 const { spawn } = require('child_process');
-const fs       = require('fs');
-const path     = require('path');
-const os       = require('os');
+const fs        = require('fs');
+const path      = require('path');
+const os        = require('os');
 const { spawnSync } = require('child_process');
 
 const ROOT      = path.resolve(__dirname, '..');
 const TESTS_DIR = path.join(ROOT, 'tests');
 const PORT      = parseInt(process.env.PORT || '3100', 10);
 const EXCLUDED_DIRS = new Set(['api', 'e2e', 'fixtures']);
+
+const CERT_DIR  = process.env.CERT_DIR || '/etc/letsencrypt/live/relistim.it';
+const CERT_FILE = path.join(CERT_DIR, 'fullchain.pem');
+const KEY_FILE  = path.join(CERT_DIR, 'privkey.pem');
+const SSL_AVAILABLE = fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE);
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -196,28 +202,54 @@ async function handleRequest(req, res) {
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 
-const server = http.createServer((req, res) => {
-  handleRequest(req, res).catch((err) => {
-    console.error('❌ Errore nel handler:', err);
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Internal server error' }));
-    }
-  });
-});
+function createHandler() {
+  return (req, res) => {
+    handleRequest(req, res).catch((err) => {
+      console.error('❌ Errore nel handler:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    });
+  };
+}
 
-server.listen(PORT, '0.0.0.0', () => {
-  const ip = getServerIP();
-  console.log('');
-  console.log('╔══════════════════════════════════════════════════════╗');
-  console.log('║          Test Runner Server in ascolto               ║');
-  console.log('╚══════════════════════════════════════════════════════╝');
-  console.log('');
-  console.log(`🌐  Server:  http://${ip}:${PORT}`);
-  console.log('');
-  console.log(`   Esegui tutti i test:      http://${ip}:${PORT}/run`);
-  console.log(`   Esegui un singolo sito:   http://${ip}:${PORT}/run?site=csipiemonte`);
-  console.log(`   Elenca siti disponibili:  http://${ip}:${PORT}/sites`);
-  console.log(`   Stato esecuzione:         http://${ip}:${PORT}/status`);
-  console.log('');
-});
+if (SSL_AVAILABLE) {
+  const tlsOptions = {
+    cert: fs.readFileSync(CERT_FILE),
+    key:  fs.readFileSync(KEY_FILE),
+  };
+  https.createServer(tlsOptions, createHandler()).listen(PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    const proto = 'https';
+    console.log('');
+    console.log('╔══════════════════════════════════════════════════════╗');
+    console.log('║      Test Runner Server in ascolto (HTTPS)           ║');
+    console.log('╚══════════════════════════════════════════════════════╝');
+    console.log('');
+    console.log(`🌐  Server:  ${proto}://${ip}:${PORT}`);
+    console.log('');
+    console.log(`   Esegui tutti i test:      ${proto}://${ip}:${PORT}/run`);
+    console.log(`   Esegui un singolo sito:   ${proto}://${ip}:${PORT}/run?site=csipiemonte`);
+    console.log(`   Elenca siti disponibili:  ${proto}://${ip}:${PORT}/sites`);
+    console.log(`   Stato esecuzione:         ${proto}://${ip}:${PORT}/status`);
+    console.log('');
+  });
+} else {
+  http.createServer(createHandler()).listen(PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    const proto = 'http';
+    console.log('');
+    console.log('╔══════════════════════════════════════════════════════╗');
+    console.log('║          Test Runner Server in ascolto               ║');
+    console.log('╚══════════════════════════════════════════════════════╝');
+    console.log('');
+    console.log(`🌐  Server:  ${proto}://${ip}:${PORT}`);
+    console.log('');
+    console.log(`   Esegui tutti i test:      ${proto}://${ip}:${PORT}/run`);
+    console.log(`   Esegui un singolo sito:   ${proto}://${ip}:${PORT}/run?site=csipiemonte`);
+    console.log(`   Elenca siti disponibili:  ${proto}://${ip}:${PORT}/sites`);
+    console.log(`   Stato esecuzione:         ${proto}://${ip}:${PORT}/status`);
+    console.log('');
+  });
+}

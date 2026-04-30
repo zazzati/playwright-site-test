@@ -10,13 +10,21 @@
 
 'use strict';
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const http  = require('http');
+const https = require('https');
+const fs   = require('fs');
+const path  = require('path');
+const os    = require('os');
 const { spawnSync } = require('child_process');
 
-const PORT = parseInt(process.env.REPORT_PORT || '80', 10);
+const HTTP_PORT  = parseInt(process.env.HTTP_PORT  || '80',  10);
+const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '443', 10);
+const PORT       = HTTPS_PORT; // usato dai link nel report
+
+const CERT_DIR  = process.env.CERT_DIR || '/etc/letsencrypt/live/relistim.it';
+const CERT_FILE = path.join(CERT_DIR, 'fullchain.pem');
+const KEY_FILE  = path.join(CERT_DIR, 'privkey.pem');
+const SSL_AVAILABLE = fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE);
 const RESULTS_DIR = path.resolve('test-results');
 const SITE_FILTER = process.env.PROJECT_NAME || null;
 
@@ -302,7 +310,7 @@ init();
 
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 
-const server = http.createServer(function(req, res) {
+function requestHandler(req, res) {
   const urlObj = new URL(req.url, 'http://localhost');
 
   if (urlObj.pathname === '/api/data') {
@@ -317,14 +325,41 @@ const server = http.createServer(function(req, res) {
 
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(fs.readFileSync(DASHBOARD_HTML, 'utf8'));
-});
+}
 
-server.listen(PORT, '0.0.0.0', function() {
-  const ip = getServerIP();
-  console.log('');
-  console.log('📊 Report server avviato — aprire nel browser:');
-  console.log('   http://' + ip + ':' + PORT);
-  console.log('');
-  console.log('   (premi Ctrl+C per fermare il server)');
-  console.log('');
-});
+if (SSL_AVAILABLE) {
+  // ── HTTPS server (porta 443) ─────────────────────────────────────────────
+  const tlsOptions = {
+    cert: fs.readFileSync(CERT_FILE),
+    key:  fs.readFileSync(KEY_FILE),
+  };
+  https.createServer(tlsOptions, requestHandler).listen(HTTPS_PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    console.log('');
+    console.log('📊 Report server avviato — aprire nel browser:');
+    console.log('   https://' + ip + ':' + (HTTPS_PORT === 443 ? '' : HTTPS_PORT));
+    console.log('   https://relistim.it' + (HTTPS_PORT === 443 ? '' : ':' + HTTPS_PORT));
+    console.log('');
+  });
+
+  // ── HTTP → HTTPS redirect (porta 80) ────────────────────────────────────
+  http.createServer((req, res) => {
+    const host = (req.headers.host || 'relistim.it').replace(/:\d+$/, '');
+    const location = 'https://' + host + req.url;
+    res.writeHead(301, { Location: location });
+    res.end();
+  }).listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log('↩️  HTTP redirect :' + HTTP_PORT + ' → HTTPS :' + HTTPS_PORT);
+    console.log('');
+  });
+
+} else {
+  // ── Fallback HTTP (nessun certificato trovato) ───────────────────────────
+  http.createServer(requestHandler).listen(HTTP_PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    console.log('');
+    console.log('📊 Report server avviato (HTTP — certificato SSL non trovato):');
+    console.log('   http://' + ip + ':' + HTTP_PORT);
+    console.log('');
+  });
+}
