@@ -107,11 +107,9 @@ function launchRun(site) {
     });
 
     child.on('close', (code) => {
-      const ip          = getServerIP();
-      const reportPort  = parseInt(process.env.REPORT_PORT || '80', 10);
-      const reportUrl   = `http://${ip}${reportPort === 80 ? '' : ':' + reportPort}`;
+      const publicBase  = process.env.PUBLIC_BASE || (SSL_AVAILABLE ? 'https://relistim.it' : `http://${getServerIP()}`);
       const sitePath    = site ? `?site=${encodeURIComponent(site)}` : '';
-      const fullReport  = `${reportUrl}${sitePath}`;
+      const fullReport  = `${publicBase}${sitePath}`;
       lines.push('');
       lines.push(`📊  Report disponibile su: ${fullReport}`);
       console.log(`\n📊  Report: ${fullReport}\n`);
