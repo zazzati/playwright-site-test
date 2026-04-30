@@ -16,6 +16,8 @@ import * as path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const telegram = require('../notifiers/telegram');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const email = require('../notifiers/email');
 
 interface StepRecord {
   title: string;
@@ -125,6 +127,21 @@ export default class StepsReporter implements Reporter {
       console.warn(`  ⚠️  Telegram notification failed: ${e.message}`);
     });
     this.telegramJobs.push(job);
+
+    const emailJob = email.sendTestResult({
+      site,
+      runId,
+      title:      test.title,
+      suiteName,
+      status:     result.status,
+      duration:   result.duration,
+      error:      result.error?.message ?? null,
+      screenshot,
+      startTime:  this.runStartTime.toISOString(),
+    }).catch((e: Error) => {
+      console.warn(`  ⚠️  Email notification failed: ${e.message}`);
+    });
+    this.telegramJobs.push(emailJob);
   }
 
   async onEnd(result: FullResult): Promise<void> {
@@ -170,6 +187,16 @@ export default class StepsReporter implements Reporter {
         stats,
       }).catch((e: Error) => {
         console.warn(`  ⚠️  Telegram run summary failed: ${e.message}`);
+      });
+
+      await email.sendRunSummary({
+        site: projectName,
+        runId,
+        startTime: result.startTime.toISOString(),
+        duration:  result.duration,
+        stats,
+      }).catch((e: Error) => {
+        console.warn(`  ⚠️  Email run summary failed: ${e.message}`);
       });
     }
   }

@@ -26,3 +26,4 @@ telegram.config.json
 
 # OS
 .DS_Store
+email.config.json

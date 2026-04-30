@@ -39,6 +39,20 @@ function getChatId() {
   return cfg && cfg.chatId ? String(cfg.chatId) : null;
 }
 
+function getDashboardUrl() {
+  const cfg = loadConfig();
+  if (cfg && cfg.dashboardUrl) return cfg.dashboardUrl;
+  // Fallback: use server IP from host network
+  const port = parseInt(process.env.REPORT_PORT || '80', 10);
+  try {
+    const { spawnSync } = require('child_process');
+    const out = spawnSync('ip', ['route', 'get', '1'], { encoding: 'utf8' }).stdout;
+    const m = out.match(/src\s+(\S+)/);
+    if (m) return `http://${m[1]}${port === 80 ? '' : ':' + port}`;
+  } catch (_) {}
+  return `http://localhost${port === 80 ? '' : ':' + port}`;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
@@ -145,6 +159,9 @@ async function sendTestResult(params) {
     msg += `\n\n⚠️ <b>ERRORE:</b>\n<pre>${escapeHtml(truncated)}</pre>`;
   }
 
+  // ─── Dashboard link ──────────────────────────────────────────────
+  msg += `\n\n🔗 <a href="${getDashboardUrl()}">Apri Dashboard</a>`;
+
   // ─── Send ────────────────────────────────────────────────────────
   if (screenshot && fs.existsSync(screenshot)) {
     // Always attach screenshot (with full message as caption)
@@ -175,8 +192,9 @@ async function sendRunSummary(params) {
   msg    += `✅ Passati:  <b>${stats.passed}</b>\n`;
   msg    += `❌ Falliti:  <b>${stats.failed}</b>\n`;
   msg    += `⏭ Skippati: <b>${stats.skipped}</b>`;
+  msg    += `\n\n🔗 <a href="${getDashboardUrl()}">Apri Dashboard</a>`;
 
   await sendMessage(chatId, msg);
 }
 
-module.exports = { sendTestResult, sendRunSummary, getChatId, loadConfig };
+module.exports = { sendTestResult, sendRunSummary, getChatId, getDashboardUrl, loadConfig };
