@@ -43,7 +43,7 @@ function getTransporter() {
 function getRecipients() {
   const cfg = loadConfig();
   if (!cfg || !cfg.to) return null;
-  return Array.isArray(cfg.to) ? cfg.to.join(',') : String(cfg.to);
+  return Array.isArray(cfg.to) ? cfg.to : [String(cfg.to)];
 }
 
 function getFrom() {
@@ -76,6 +76,7 @@ function fmtDate(iso) {
     return new Date(iso).toLocaleString('it-IT', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZone: 'Europe/Rome',
     });
   } catch (_) { return iso; }
 }
@@ -97,8 +98,9 @@ function fmtDate(iso) {
  * @param {string}      params.startTime   - ISO string dell'inizio run
  */
 async function sendTestResult(params) {
-  const to = getRecipients();
-  if (!to) return;
+  const recipients = getRecipients();
+  if (!recipients || recipients.length === 0) return;
+  const to = recipients.join(',');
   const transporter = getTransporter();
   if (!transporter) return;
 
@@ -138,28 +140,51 @@ async function sendTestResult(params) {
 
 /**
  * Invia un riepilogo via email al termine di tutta la run.
+ * Contiene tutti i test raggruppati per sito, con i falliti in cima.
  */
 async function sendRunSummary(params) {
-  const to = getRecipients();
-  if (!to) return;
+  const recipients = getRecipients();
+  if (!recipients || recipients.length === 0) return;
   const transporter = getTransporter();
   if (!transporter) return;
 
-  const { site, runId, startTime, duration, stats } = params;
+  const { site, runId, startTime, duration, stats, tests = [] } = params;
   const icon = stats.failed === 0 ? '🎉' : '🚨';
+
+  // Raggruppa per sito (estratto dal path del file: tests/{site}/...)
+  const groupsMap = {};
+  for (const t of tests) {
+    const parts = (t.file || '').replace(/\\/g, '/').split('/');
+    // tests/csipiemonte/example.spec.ts → "csipiemonte"
+    const siteName = parts.length >= 2 ? parts[parts.length - 2] : site;
+    if (!groupsMap[siteName]) groupsMap[siteName] = { failed: [], passed: [] };
+    if (t.status === 'passed') groupsMap[siteName].passed.push(t);
+    else groupsMap[siteName].failed.push(t);
+  }
+  // Converti in array ordinato per template
+  const groups = Object.entries(groupsMap).map(([name, g]) => ({
+    name,
+    failed: g.failed,
+    passed: g.passed,
+    total:  g.failed.length + g.passed.length,
+  }));
 
   const html = nunjucks.render('run-summary.html', {
     icon,
     site,
     runId,
     stats,
+    groups,
     duration:     fmtDuration(duration),
     dateStr:      fmtDate(startTime),
     dashboardUrl: getDashboardUrl(),
+    fmtDuration,
   });
 
-  const subject = `${icon} [${site}] Run completata — ✅ ${stats.passed} passati, ❌ ${stats.failed} falliti`;
-  await transporter.sendMail({ from: getFrom(), to, subject, html });
+  const subject = `${icon} [${site}] Run completata — ✅ ${stats.passed} passati  ❌ ${stats.failed} falliti`;
+  for (const to of recipients) {
+    await transporter.sendMail({ from: getFrom(), to, subject, html });
+  }
 }
 
 module.exports = { sendTestResult, sendRunSummary, getRecipients, loadConfig };

@@ -3,34 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <style>
-    body { font-family: sans-serif; font-size: 14px; color: #333; }
-    h2   { margin-bottom: 8px; }
-    table { border-collapse: collapse; margin-bottom: 16px; }
-    td   { padding: 6px 12px; border-bottom: 1px solid #eee; }
-    td:first-child { font-weight: bold; white-space: nowrap; color: #555; }
+    body  { font-family: Arial, sans-serif; font-size: 14px; color: #333; max-width: 700px; margin: 0 auto; padding: 16px; }
+    h1    { font-size: 20px; margin-bottom: 4px; }
+    h2    { font-size: 16px; margin: 24px 0 8px; padding: 6px 12px;
+            border-left: 4px solid #1565c0; background: #f0f4ff; }
+    h2.has-failures { border-left-color: #c62828; background: #fff0f0; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+    td, th { padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    th    { background: #f5f5f5; font-weight: bold; color: #555; }
     .passed  { color: #2e7d32; font-weight: bold; }
     .failed  { color: #c62828; font-weight: bold; }
     .skipped { color: #888; }
-    .dashboard a { color: #1565c0; }
+    .badge-pass { display:inline-block; background:#2e7d32; color:#fff; border-radius:3px; padding:1px 7px; font-size:12px; }
+    .badge-fail { display:inline-block; background:#c62828; color:#fff; border-radius:3px; padding:1px 7px; font-size:12px; }
+    .badge-skip { display:inline-block; background:#888;   color:#fff; border-radius:3px; padding:1px 7px; font-size:12px; }
+    pre   { background:#f5f5f5; padding:8px 12px; border-radius:4px; font-size:12px;
+            white-space:pre-wrap; word-break:break-all; margin:4px 0 0 0; }
+    .summary-box { background:#f9f9f9; border:1px solid #ddd; border-radius:6px;
+                   padding:12px 16px; margin-bottom:20px; }
+    .summary-row { display:flex; gap:24px; flex-wrap:wrap; margin-top:8px; }
+    .summary-item { font-size:22px; font-weight:bold; }
+    .footer { margin-top:24px; font-size:12px; color:#888; border-top:1px solid #eee; padding-top:10px; }
+    a { color: #1565c0; }
   </style>
 </head>
 <body>
 
-  <h2>{{ icon }} Run completata — {{ site }}</h2>
+  <h1>{{ icon }} Run completata — {{ site }}</h1>
 
+  <div class="summary-box">
+    <div><strong>Data:</strong> {{ dateStr }} &nbsp;|&nbsp; <strong>Run:</strong> <code>{{ runId }}</code> &nbsp;|&nbsp; <strong>Durata:</strong> {{ duration }}</div>
+    <div class="summary-row">
+      <span class="summary-item passed">✅ {{ stats.passed }} passati</span>
+      <span class="summary-item failed">❌ {{ stats.failed }} falliti</span>
+      {% if stats.skipped > 0 %}<span class="summary-item skipped">⏭ {{ stats.skipped }} skippati</span>{% endif %}
+    </div>
+  </div>
+
+  {% for group in groups %}
+  <h2 class="{{ 'has-failures' if group.failed | length > 0 else '' }}">
+    📁 {{ group.name }}
+    &nbsp;
+    <span class="badge-pass">✅ {{ group.passed | length }}</span>
+    {% if group.failed | length > 0 %}<span class="badge-fail">❌ {{ group.failed | length }}</span>{% endif %}
+  </h2>
+
+  {% if group.failed | length > 0 %}
   <table>
-    <tr><td>Site</td>          <td>{{ site }}</td></tr>
-    <tr><td>Data</td>          <td>{{ dateStr }}</td></tr>
-    <tr><td>Run</td>           <td><code>{{ runId }}</code></td></tr>
-    <tr><td>Durata totale</td> <td>{{ duration }}</td></tr>
-    <tr><td>✅ Passati</td>    <td><span class="passed">{{ stats.passed }}</span></td></tr>
-    <tr><td>❌ Falliti</td>    <td>
-      <span class="{{ 'failed' if stats.failed > 0 else 'passed' }}">{{ stats.failed }}</span>
-    </td></tr>
-    <tr><td>⏭ Skippati</td>   <td><span class="skipped">{{ stats.skipped }}</span></td></tr>
+    <tr>
+      <th>Esito</th>
+      <th>Test</th>
+      <th>Durata</th>
+      <th>Errore</th>
+    </tr>
+    {% for t in group.failed %}
+    <tr>
+      <td><span class="badge-fail">❌ {{ t.status | upper }}</span></td>
+      <td>{% if t.suiteName %}<span style="color:#888">{{ t.suiteName }} › </span>{% endif %}{{ t.title }}</td>
+      <td style="white-space:nowrap">{{ t.duration }}ms</td>
+      <td>
+        {% if t.error %}<pre>{{ t.error | truncate(400, false, '…') }}</pre>{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
   </table>
+  {% endif %}
 
-  <div class="dashboard">
+  {% if group.passed | length > 0 %}
+  <table>
+    <tr>
+      <th>Esito</th>
+      <th>Test</th>
+      <th>Durata</th>
+    </tr>
+    {% for t in group.passed %}
+    <tr>
+      <td><span class="badge-pass">✅ PASSED</span></td>
+      <td>{% if t.suiteName %}<span style="color:#888">{{ t.suiteName }} › </span>{% endif %}{{ t.title }}</td>
+      <td style="white-space:nowrap">{{ t.duration }}ms</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% endfor %}
+
+  <div class="footer">
     <a href="{{ dashboardUrl }}">🔗 Apri Dashboard</a>
   </div>
 

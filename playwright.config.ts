@@ -7,7 +7,7 @@ const RUN_ID =
   `run_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}`;
 
 // Nome del sito/progetto corrente (impostato da run-monitor.sh)
-const PROJECT_NAME = process.env.PROJECT_NAME || 'all';
+const PROJECT_NAME = process.env.PROJECT_NAME || 'default';
 
 // Struttura: test-results/{nome_sito}/{run_id}/
 const OUTPUT_DIR = `test-results/${PROJECT_NAME}/${RUN_ID}`;

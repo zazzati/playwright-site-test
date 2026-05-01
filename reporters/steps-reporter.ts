@@ -128,20 +128,7 @@ export default class StepsReporter implements Reporter {
     });
     this.telegramJobs.push(job);
 
-    const emailJob = email.sendTestResult({
-      site,
-      runId,
-      title:      test.title,
-      suiteName,
-      status:     result.status,
-      duration:   result.duration,
-      error:      result.error?.message ?? null,
-      screenshot,
-      startTime:  this.runStartTime.toISOString(),
-    }).catch((e: Error) => {
-      console.warn(`  ⚠️  Email notification failed: ${e.message}`);
-    });
-    this.telegramJobs.push(emailJob);
+
   }
 
   async onEnd(result: FullResult): Promise<void> {
@@ -195,6 +182,7 @@ export default class StepsReporter implements Reporter {
         startTime: result.startTime.toISOString(),
         duration:  result.duration,
         stats,
+        tests:     this.tests,
       }).catch((e: Error) => {
         console.warn(`  ⚠️  Email run summary failed: ${e.message}`);
       });
