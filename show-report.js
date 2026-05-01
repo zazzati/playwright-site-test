@@ -10,15 +10,32 @@
 
 'use strict';
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { spawnSync } = require('child_process');
+const http  = require('http');
+const https = require('https');
+const fs   = require('fs');
+const path  = require('path');
+const os    = require('os');
+const { spawnSync, spawn } = require('child_process');
 
-const PORT = parseInt(process.env.REPORT_PORT || '80', 10);
-const RESULTS_DIR = path.resolve('test-results');
-const SITE_FILTER = process.env.PROJECT_NAME || null;
+const HTTP_PORT  = parseInt(process.env.HTTP_PORT  || '80',  10);
+const HTTPS_PORT = parseInt(process.env.HTTPS_PORT || '443', 10);
+const PORT       = HTTPS_PORT; // usato dai link nel report
+
+const CERT_DIR  = process.env.CERT_DIR || '/etc/letsencrypt/live/relistim.it';
+const CERT_FILE = path.join(CERT_DIR, 'fullchain.pem');
+const KEY_FILE  = path.join(CERT_DIR, 'privkey.pem');
+const SSL_AVAILABLE = fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE);
+const RESULTS_DIR   = path.resolve('test-results');
+const SITE_FILTER   = process.env.PROJECT_NAME || null;
+
+const TESTS_DIR     = path.join(__dirname, 'tests');
+const EXCLUDED_DIRS = new Set(['api', 'e2e', 'fixtures']);
+const RUNNER_PREFIX = '/runner';
+const PUBLIC_BASE   = process.env.PUBLIC_BASE || 'https://relistim.it';
+
+// ─── Runner state ────────────────────────────────────────────────────────────
+
+let runState = null; // null = idle, object = running
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +52,129 @@ function getServerIP() {
     }
   }
   return 'localhost';
+}
+
+function discoverSites() {
+  if (!fs.existsSync(TESTS_DIR)) return [];
+  return fs
+    .readdirSync(TESTS_DIR)
+    .filter((d) => {
+      if (EXCLUDED_DIRS.has(d)) return false;
+      return fs.statSync(path.join(TESTS_DIR, d)).isDirectory();
+    })
+    .sort();
+}
+
+function parseQuery(url) {
+  const idx = url.indexOf('?');
+  if (idx === -1) return {};
+  const qs = url.slice(idx + 1);
+  return Object.fromEntries(
+    qs.split('&').map((p) => p.split('=').map(decodeURIComponent))
+  );
+}
+
+function launchRun(site) {
+  const args = site ? [`--site=${site}`] : [];
+  return new Promise((resolve) => {
+    const lines = [];
+    const child = spawn('node', ['scripts/run-tests.js', ...args], {
+      cwd:   __dirname,
+      env:   process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    child.stdout.on('data', (d) => {
+      const text = d.toString();
+      process.stdout.write(text);
+      lines.push(...text.split('\n'));
+    });
+    child.stderr.on('data', (d) => {
+      const text = d.toString();
+      process.stderr.write(text);
+      lines.push(...text.split('\n'));
+    });
+
+    child.on('close', (code) => {
+      const sitePath = site ? `?site=${encodeURIComponent(site)}` : '';
+      const reportUrl = `${PUBLIC_BASE}${sitePath}`;
+      lines.push('');
+      lines.push(`📊  Report disponibile su: ${reportUrl}`);
+      console.log(`\n📊  Report: ${reportUrl}\n`);
+      resolve({ output: lines.join('\n'), exitCode: code ?? 0, reportUrl });
+    });
+  });
+}
+
+async function handleRunnerRequest(req, res, urlObj) {
+  const subPath = urlObj.pathname.slice(RUNNER_PREFIX.length) || '/';
+  const query   = parseQuery(req.url || '');
+
+  if (req.method === 'GET' && subPath === '/sites') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ sites: discoverSites() }));
+    return;
+  }
+
+  if (req.method === 'GET' && subPath === '/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (runState) {
+      res.end(JSON.stringify({ running: true, site: runState.site, startedAt: runState.startedAt }));
+    } else {
+      res.end(JSON.stringify({ running: false }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && (subPath === '/run' || subPath === '/')) {
+    const site     = query.site || null;
+    const allSites = discoverSites();
+
+    if (site && !allSites.includes(site)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `Sito "${site}" non trovato. Disponibili: ${allSites.join(', ')}` }));
+      return;
+    }
+
+    if (runState) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: "Un'esecuzione è già in corso", runningState: runState }));
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Transfer-Encoding': 'chunked',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    const label = site ? site : 'tutti i siti';
+    res.write(`▶  Avvio esecuzione per: ${label}\n\n`);
+    runState = { site: site || 'all', startedAt: new Date().toISOString() };
+
+    try {
+      const { output, exitCode, reportUrl } = await launchRun(site);
+      res.write(output);
+      res.write(`\n\nExit code: ${exitCode}\n`);
+      res.write(`\n📊  Visualizza il report: ${reportUrl}\n`);
+    } finally {
+      runState = null;
+    }
+
+    res.end();
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    error: 'Not found',
+    endpoints: [
+      'GET /runner/run           → esegue tutti i siti',
+      'GET /runner/run?site=xxx  → esegue solo il sito specificato',
+      'GET /runner/sites         → elenca i siti disponibili',
+      'GET /runner/status        → stato corrente del runner',
+    ],
+  }));
 }
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
@@ -302,8 +442,20 @@ init();
 
 // ─── HTTP Server ──────────────────────────────────────────────────────────────
 
-const server = http.createServer(function(req, res) {
+function requestHandler(req, res) {
   const urlObj = new URL(req.url, 'http://localhost');
+
+  // Runner endpoints: /runner/run, /runner/sites, /runner/status
+  if (urlObj.pathname.startsWith(RUNNER_PREFIX + '/') || urlObj.pathname === RUNNER_PREFIX) {
+    handleRunnerRequest(req, res, urlObj).catch((err) => {
+      console.error('❌ Runner error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    });
+    return;
+  }
 
   if (urlObj.pathname === '/api/data') {
     const data = loadAllData();
@@ -317,14 +469,46 @@ const server = http.createServer(function(req, res) {
 
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(fs.readFileSync(DASHBOARD_HTML, 'utf8'));
-});
+}
 
-server.listen(PORT, '0.0.0.0', function() {
-  const ip = getServerIP();
-  console.log('');
-  console.log('📊 Report server avviato — aprire nel browser:');
-  console.log('   http://' + ip + ':' + PORT);
-  console.log('');
-  console.log('   (premi Ctrl+C per fermare il server)');
-  console.log('');
-});
+if (SSL_AVAILABLE) {
+  // ── HTTPS server (porta 443) ─────────────────────────────────────────────
+  const tlsOptions = {
+    cert: fs.readFileSync(CERT_FILE),
+    key:  fs.readFileSync(KEY_FILE),
+  };
+  https.createServer(tlsOptions, requestHandler).listen(HTTPS_PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    console.log('');
+    console.log('📊 Report server avviato — aprire nel browser:');
+    console.log('   ' + PUBLIC_BASE);
+    console.log('');
+    console.log('🚀 Test Runner (via HTTPS):');
+    console.log('   ' + PUBLIC_BASE + '/runner/run              → avvia tutti i test');
+    console.log('   ' + PUBLIC_BASE + '/runner/run?site=xxx     → avvia un sito');
+    console.log('   ' + PUBLIC_BASE + '/runner/sites            → siti disponibili');
+    console.log('   ' + PUBLIC_BASE + '/runner/status           → stato runner');
+    console.log('');
+  });
+
+  // ── HTTP → HTTPS redirect (porta 80) ────────────────────────────────────
+  http.createServer((req, res) => {
+    const host = (req.headers.host || 'relistim.it').replace(/:\d+$/, '');
+    const location = 'https://' + host + req.url;
+    res.writeHead(301, { Location: location });
+    res.end();
+  }).listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log('↩️  HTTP redirect :' + HTTP_PORT + ' → HTTPS :' + HTTPS_PORT);
+    console.log('');
+  });
+
+} else {
+  // ── Fallback HTTP (nessun certificato trovato) ───────────────────────────
+  http.createServer(requestHandler).listen(HTTP_PORT, '0.0.0.0', () => {
+    const ip = getServerIP();
+    console.log('');
+    console.log('📊 Report server avviato (HTTP — certificato SSL non trovato):');
+    console.log('   http://' + ip + ':' + HTTP_PORT);
+    console.log('');
+  });
+}

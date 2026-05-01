@@ -7,6 +7,14 @@ test-results/**/*.webm
 test-results/**/html/
 test-results/**/.last-run.json
 
+# Run generate localmente (non tracciate nel repo)
+test-results/all/
+test-results/regionepiemonte/
+test-results/csipiemonte/run_2026-04-3*/
+test-results/csipiemonte/run_2026-0[5-9]-*/
+test-results/csipiemonte/run_2026-1*/
+test-results/csipiemonte/run_202[7-9]-*/
+
 # Playwright default report folder
 /playwright-report/
 /reports/

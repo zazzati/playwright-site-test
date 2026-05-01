@@ -7,6 +7,7 @@
     "run": "node scripts/run-tests.js",
     "monitor": "bash run-monitor.sh",
     "report": "node show-report.js",
+    "server": "node scripts/test-runner-server.js",
     "setup-telegram": "node scripts/setup-telegram.js",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
